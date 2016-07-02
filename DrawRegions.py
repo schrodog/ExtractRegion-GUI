@@ -31,12 +31,21 @@ class DrawRegions(QWidget):
 			paint.drawRect(coor[0],coor[1],12,12)
 
 	def mousePressEvent(self,event):
-		self.x=event.pos().x()
-		self.y=event.pos().y()
-		if self.notRepeat(self.x,self.y):
-			self.spaceArray.insert(0,[self.x,self.y])
-			self.repaint()
-			# self.update()
+		self.mouseClicking=True
+		self.update()
+
+	def mouseMoveEvent(self,event):
+		if self.mouseClicking:
+			self.x=event.pos().x()
+			self.y=event.pos().y()
+			if self.notRepeat(self.x,self.y):
+				self.spaceArray.insert(0,[self.x,self.y])
+				self.repaint()			
+
+	def mouseReleaseEvent(self,event):
+		self.mouseClicking=False
+		self.update()
+
 
 	def notRepeat(self,x,y):
 		for i in self.spaceArray:
