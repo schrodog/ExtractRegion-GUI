@@ -13,13 +13,15 @@ class DrawRegions(QGraphicsPixmapItem):
 		super(DrawRegions,self).__init__()
 		global graphX
 		global graphY
+		self.hoverX, self.hoverY=0,0
 		self.spaceArray, self.finalArray=[],[]
 		self.setFlags(QGraphicsPixmapItem.ItemIsFocusable)
 		self.scale=1.0
 		self.mouseLeftClicking=False
 		self.scaleX, self.scaleY = 0,0
 		self.brushSize=30
-		
+		self.setAcceptHoverEvents(True)
+
 		# print 'draw=',graphX,graphY
 		self.minX, self.maxX=graphX,0
 		self.minY, self.maxY=graphY,0
@@ -29,6 +31,10 @@ class DrawRegions(QGraphicsPixmapItem):
 
 		radius=self.brushSize
 		painter.setPen(Qt.NoPen)
+		painter.setBrush(QColor(125,125,125,120))
+
+		painter.drawEllipse(self.hoverX-radius,self.hoverY-radius,2*radius,2*radius)
+
 		painter.setBrush(QColor(125,125,125,20))
 
 		for i in self.finalArray:
@@ -53,7 +59,11 @@ class DrawRegions(QGraphicsPixmapItem):
 			
 		self.update()
 
+	def hoverMoveEvent(self,event):
+		self.hoverX,self.hoverY=event.pos().x(),event.pos().y()
+		self.update()
 	def mouseMoveEvent(self,event):
+		print 'in=',event.pos().x(),event.pos().y()
 		if self.mouseLeftClicking:
 			self.x=event.pos().x()
 			self.y=event.pos().y()
@@ -118,7 +128,7 @@ class DrawRegions(QGraphicsPixmapItem):
 				self.brushSize -= 1
 		elif event.key()==Qt.Key_U:
 			self.delArray()
-
+		self.update()
 
 	def notRepeat(self,x,y):
 		for i in self.spaceArray:
@@ -171,7 +181,7 @@ class MainWindow(QMainWindow):
 		global graphY
 		print 'called mainWindow'
 		# graphX,graphY=self.pixmap.width(),self.pixmap.height()
-
+		# self.setMouseTracking(True)
 		self.minX,self.maxX,self.minY,self.maxY=0,0,0,0
 		self.mode=0
 		self.setWindowTitle("Draw Regions")
@@ -231,6 +241,9 @@ class MainWindow(QMainWindow):
 		self.widget=QWidget()
 		self.widget.setLayout(layout)
 		self.setCentralWidget(self.widget)
+		# self.widget.setMouseTracking(True)
+		# self.view.setMouseTracking(True)
+		# self.scene.setMouseTracking(True)
 
 	def exportAsFits(self):
 		def dist(x,y,X,Y,R):
@@ -335,6 +348,10 @@ class MainWindow(QMainWindow):
 	def keyPressEvent(self,event):
 		if event.key()==Qt.Key_Escape:
 			self.close()
+
+	def mouseMoveEvent(self,event):
+		print 'out=',event.pos().x(),event.pos().y()
+
 
 def main():        
     app=QApplication(sys.argv)
