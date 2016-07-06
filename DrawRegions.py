@@ -35,7 +35,7 @@ class DrawRegions(QGraphicsPixmapItem):
 
 		painter.drawEllipse(self.hoverX-radius,self.hoverY-radius,2*radius,2*radius)
 
-		painter.setBrush(QColor(125,125,125,20))
+		painter.setBrush(QColor(125,125,125,30))
 
 		for i in self.finalArray:
 			for coor in i:
@@ -63,7 +63,7 @@ class DrawRegions(QGraphicsPixmapItem):
 		self.hoverX,self.hoverY=event.pos().x(),event.pos().y()
 		self.update()
 	def mouseMoveEvent(self,event):
-		print 'in=',event.pos().x(),event.pos().y()
+		# print 'in=',event.pos().x(),event.pos().y()
 		if self.mouseLeftClicking:
 			self.x=event.pos().x()
 			self.y=event.pos().y()
@@ -91,7 +91,7 @@ class DrawRegions(QGraphicsPixmapItem):
 						self.minY=self.y-r
 					else:
 						self.minY=0
-				print self.minX,self.maxX,self.minY,self.maxY
+				# print self.minX,self.maxX,self.minY,self.maxY
 				self.update()			
 
 	def mouseReleaseEvent(self,event):
@@ -101,16 +101,20 @@ class DrawRegions(QGraphicsPixmapItem):
 
 	def keyPressEvent(self,event):
 		super(DrawRegions,self).keyPressEvent(event) 	#need this,can press esc
-		if event.key()==Qt.Key_Q:
+		if event.key()==Qt.Key_W:
 			self.setTransformOriginPoint(self.scaleX,self.scaleY)
 			if self.scale>=1 and self.scale<10:
+				if self.brushSize>2:
+					self.brushSize /= 1.2
 				self.scale += 0.5
 			elif self.scale<1:
 				self.scale += 0.2
 			self.setScale(self.scale)
-		elif event.key()==Qt.Key_W:
+		elif event.key()==Qt.Key_Q:
 			self.setTransformOriginPoint(self.scaleX,self.scaleY)
 			if self.scale > 1:
+				if self.brushSize<75:
+					self.brushSize *= 1.2
 				self.scale -= 0.5
 			elif self.scale>=0.4:
 				self.scale -= 0.2
@@ -118,13 +122,13 @@ class DrawRegions(QGraphicsPixmapItem):
 		elif event.key()==Qt.Key_E:
 			self.setTransformOriginPoint(0,0)
 			self.setScale(1.0)
-		elif event.key()==Qt.Key_D:
-			if self.brushSize<=55:
+		elif event.key()==Qt.Key_F:
+			if self.brushSize<=155:
 				self.brushSize +=5
-		elif event.key()==Qt.Key_C:
+		elif event.key()==Qt.Key_D:
 			if self.brushSize >=10:
 				self.brushSize -= 5
-			elif self.brushSize <=5 and self.brushSize>1:
+			elif self.brushSize <=10 and self.brushSize>1:
 				self.brushSize -= 1
 		elif event.key()==Qt.Key_U:
 			self.delArray()
@@ -140,7 +144,6 @@ class DrawRegions(QGraphicsPixmapItem):
 		self.finalArray = self.finalArray[1:]
 		self.update()
 	def loadArray(self):
-		print 'finalArray loaded'
 		return self.finalArray
 
 	def saveRegion(self):
@@ -155,7 +158,7 @@ class DrawRegions(QGraphicsPixmapItem):
 		f.close()
 
 	def loadRegion(self):
-		fname=QFileDialog.getOpenFileName(None,"Load Region","/home/lkit/Pictures")
+		fname=QFileDialog.getOpenFileName(None,"Load Region","/home/lkit/tmp")
 		f=open(str(fname))
 		dimension=map(int,f.readline().split())
 		self.minX,self.maxX,self.minY,self.maxY=map(int,f.readline().split())
@@ -163,11 +166,12 @@ class DrawRegions(QGraphicsPixmapItem):
 		f.close()
 		if (graphX>=dimension[0] and graphY>=dimension[1]):
 			self.finalArray=data
-			print 'data->finalArray'
+			# print 'data->finalArray'
 		else:
-			# errorMessage=QErrorMessage()
-			print 'mismatch'
-			# errorMessage.showMessage("Mismatched region!")
+			msgBox=QMessageBox()
+			msgBox.setWindowTitle("Warning")
+			msgBox.setText("Mismatched region")
+			msgBox.exec_()				
 	def loadComputeRegion(self):
 		data=[self.minX,self.maxX,self.minY,self.maxY]
 		return data
@@ -179,9 +183,6 @@ class MainWindow(QMainWindow):
 		super(MainWindow,self).__init__()
 		global graphX
 		global graphY
-		print 'called mainWindow'
-		# graphX,graphY=self.pixmap.width(),self.pixmap.height()
-		# self.setMouseTracking(True)
 		self.minX,self.maxX,self.minY,self.maxY=0,0,0,0
 		self.mode=0
 		self.setWindowTitle("Draw Regions")
@@ -199,6 +200,9 @@ class MainWindow(QMainWindow):
 		self.toolBar.addSeparator()
 		exportAsFITSAction=self.toolBar.addAction("Export As FITS")
 		exportAsPNGAction=self.toolBar.addAction("Export As PNG")
+		exportWSLAPAction=self.toolBar.addAction("Export To WSLAP")
+		self.toolBar.addSeparator()
+		helpAction=self.toolBar.addAction("Help")
 
 		self.statusBar=QStatusBar()
 		self.setStatusBar(self.statusBar)
@@ -211,6 +215,8 @@ class MainWindow(QMainWindow):
 		loadRegionAction.triggered.connect(self.loadRegion)
 		exportAsFITSAction.triggered.connect(self.exportAsFits)
 		exportAsPNGAction.triggered.connect(self.exportAsPNG)
+		exportWSLAPAction.triggered.connect(self.exportWSLAP)
+		helpAction.triggered.connect(self.helpFunc)
 
 		
 	def showMsg01(self):
@@ -231,6 +237,7 @@ class MainWindow(QMainWindow):
 		self.scene=QGraphicsScene()
 		self.pixmap=self.openImage()
 		graphX,graphY= self.pixmap.width(),self.pixmap.height()
+		self.resize(graphX,graphY)
 		self.scene.setSceneRect(0, 0, graphX,graphY)
 		self.imagePanel=DrawRegions(scene=self.scene)
 		self.imagePanel.setPixmap(self.pixmap)
@@ -241,83 +248,52 @@ class MainWindow(QMainWindow):
 		self.widget=QWidget()
 		self.widget.setLayout(layout)
 		self.setCentralWidget(self.widget)
-		# self.widget.setMouseTracking(True)
-		# self.view.setMouseTracking(True)
-		# self.scene.setMouseTracking(True)
+
 
 	def exportAsFits(self):
-		def dist(x,y,X,Y,R):
-		    return sqrt((x-X)**2+(y-Y)**2)<=R
-		points=np.asarray(self.imagePanel.loadArray())
-		self.minX,self.maxX,self.minY,self.maxY=self.imagePanel.loadComputeRegion()
-
 		if self.mode != 0:
-			if self.mode==1:
-				TFtable=np.asarray([[False for i in range(graphX)] for j in range(graphY)])
-				mode_const=True
-			elif self.mode==2:
-				TFtable=np.asarray([[True for i in range(graphX)] for j in range(graphY)])
-				mode_const=False
+			TFtable=self.genTFtable()
 
-			for i in range(int(self.minX),int(self.maxX)):
-				for j in range(int(self.minY),int(self.maxY)):
-					for k0 in points:
-						for k in k0:
-							if dist(j,i,k[1],k[0],k[2]):
-								TFtable[j,i]=mode_const
-				print 'i=',i
 			input_fits=QFileDialog.getOpenFileName(self,"Open source FITS file",
 				"/home/lkit/Data","*.fits")
 			f=pyfits.open(str(input_fits))
 			input_data=np.asarray(f[0].data)
 			f.close()
-			print input_data
+			# print input_data
 			if self.mode==1:
 				output_data=np.asarray([[0.0 for i in range(graphX)] for j in range(graphY)])
 			elif self.mode==2:
 				output_data=copy.copy(input_data)
-			print output_data
+			# print output_data
 			for i in range(int(self.minX),int(self.maxX)):
 				for j in range(int(self.minY),int(self.maxY)):
 					if self.mode==1:
 						if TFtable[j,i]:
-							output_data[graphY-j,i]=input_data[graphY-j,i]
+							output_data[graphY-j-1,i]=input_data[graphY-j-1,i]
 					elif self.mode==2:
 						if not TFtable[j,i]:
-							output_data[graphY-j,i]=0
+							output_data[graphY-j-1,i]=0
 
 			hdu=pyfits.PrimaryHDU(output_data)
 			out_fits=QFileDialog.getSaveFileName(None,"Save FITS file","/home/lkit/Pictures")
 			hdu.writeto(str(out_fits),clobber=True)
 		else:
-			print 'Please choose select/mask mode'
+			self.warningMsg("Please choose select/mask mode")
+
 
 	def exportAsPNG(self):
-		def dist(x,y,X,Y,R):
-		    return sqrt((x-X)**2+(y-Y)**2)<=R
-		self.minX,self.maxX,self.minY,self.maxY=self.imagePanel.loadComputeRegion()
-
-		points=np.asarray(self.imagePanel.loadArray())
-
 		if self.mode != 0:
-			if self.mode==1:
-				TFtable=np.asarray([[False for i in range(graphX)] for j in range(graphY)])
-				mode_const=True
-			elif self.mode==2:
-				TFtable=np.asarray([[True for i in range(graphX)] for j in range(graphY)])
-				mode_const=False
+			TFtable=self.genTFtable()
 
-			for i in range(int(self.minX),int(self.maxX)):
-				for j in range(int(self.minY),int(self.maxY)):
-					for k0 in points:
-						for k in k0:
-							if dist(j,i,k[1],k[0],k[2]):
-								TFtable[j,i]=mode_const
-				print 'i=',i
 			imInput=Image.open(str(self.input_image))
 			input_data=np.asarray(imInput,dtype=np.uint8)
 			if self.mode==1:
-				output_data=np.asarray([[[0,0,0] for i in range(graphX)] for j in range(graphY)], dtype=np.uint8)
+				if len(input_data[0,0])==3:
+					# print 'choose 000'
+					output_data=np.asarray([[[0,0,0] for i in range(graphX)] for j in range(graphY)], dtype=np.uint8)
+				elif len(input_data[0,0])==4:
+					# print 'choose 0000'
+					output_data=np.asarray([[[0,0,0,255] for i in range(graphX)] for j in range(graphY)], dtype=np.uint8)
 			else:
 				output_data=copy.copy(input_data)
 
@@ -325,18 +301,45 @@ class MainWindow(QMainWindow):
 				for j in range(int(self.minY),int(self.maxY)):
 					if self.mode==1:
 						if TFtable[j,i]:
+							# print input_data[j,i],output_data[j,i]
 							output_data[j,i]=copy.copy(input_data[j,i])
 					elif self.mode==2:
 						if not TFtable[j,i]:
 							output_data[j,i]=[0,0,0]
-			# output_data=np.asarray(output_data,dtype=np.uint8)
-			imOutput=Image.fromarray(output_data,mode='RGB')
+			if len(input_data[0,0])==3:
+				imOutput=Image.fromarray(output_data,mode='RGB')
+			elif len(input_data[0,0])==4:
+				imOutput=Image.fromarray(output_data,mode='RGBA')
+
 			out_image=QFileDialog.getSaveFileName(None,"Save PNG Image","/home/lkit/Pictures",
 				"Image Files (*.bmp *.jpg *.png *.xpm)")
 			imOutput.save(str(out_image))
 		else:
-			print 'Please choose select/mask mode'
+			self.warningMsg("Please choose select/mask mode")
 
+
+	def genTFtable(self):
+		def dist(x,y,X,Y,R):
+		    return sqrt((x-X)**2+(y-Y)**2)<=R
+		self.minX,self.maxX,self.minY,self.maxY=self.imagePanel.loadComputeRegion()
+
+		points=np.asarray(self.imagePanel.loadArray())
+
+		if self.mode==1:
+			TFtable=np.asarray([[False for i in range(graphX)] for j in range(graphY)])
+			mode_const=True
+		elif self.mode==2:
+			TFtable=np.asarray([[True for i in range(graphX)] for j in range(graphY)])
+			mode_const=False
+
+		for i in range(int(self.minX),int(self.maxX)):
+			for j in range(int(self.minY),int(self.maxY)):
+				for k0 in points:
+					for k in k0:
+						if dist(j,i,k[1],k[0],k[2]):
+							TFtable[j,i]=mode_const
+			print 'i=',i
+		return TFtable
 
 	def openImage(self):
 		fname=QFileDialog.getOpenFileName(self,"Open image",
@@ -349,8 +352,68 @@ class MainWindow(QMainWindow):
 		if event.key()==Qt.Key_Escape:
 			self.close()
 
-	def mouseMoveEvent(self,event):
-		print 'out=',event.pos().x(),event.pos().y()
+	def exportWSLAP(self):
+		def rebin(a, shape):
+		    sh = shape[0],a.shape[0]//shape[0],shape[1],a.shape[1]//shape[1]
+		    return a.reshape(sh).mean(-1).mean(1)
+		if self.mode!=0:
+			TFtable=self.genTFtable()
+			
+			input_fits=QFileDialog.getOpenFileName(self,"Open source FITS file",
+				"/home/lkit/tmp","*.fits")
+			f=pyfits.open(str(input_fits))
+			input_data=np.asarray(f[0].data)
+			f.close()			
+			if self.mode==1:
+				original_data=np.asarray([[0.0 for i in range(graphX)] for j in range(graphY)])
+			else:
+				original_data=copy.copy(input_fits)		
+
+			# before resize
+			for i in range(int(self.minX),int(self.maxX)):
+				for j in range(int(self.minY),int(self.maxY)):
+					if self.mode==1:
+						if TFtable[j,i]:
+							# print graphY,i,j
+							original_data[graphY-j-1,i]=input_data[graphY-j-1,i]
+					elif self.mode==2:
+						if not TFtable[j,i]:
+							original_data[graphY-j-1,i]=0.0
+	
+			targetX, targetY= 8,8
+
+			layer=1
+			file_mode=1
+			output_data=rebin(original_data,(targetX,targetY))
+
+			wslapName=QFileDialog.getSaveFileName(self,"Save mass layer file","/home/lkit/tmp")
+			if file_mode==1:
+				f=open(wslapName,'w')
+			elif file_mode==2:
+				f=open(wslapName,'a')
+			for j in range(targetX):
+				for i in range(targetY):
+					f.write("\t\t%d\t\t%d\t%0.8f\t\t\t%d\n" %(j,i,output_data[j,i],layer))
+			f.close()
+		else:
+			self.warningMsg("Please choose select/mask mode")
+
+	def warningMsg(self,string):
+		msgBox=QMessageBox()
+		msgBox.setWindowTitle("Warning")
+		msgBox.setText(string)
+		msgBox.exec_()
+
+	def helpFunc(self):
+		msgBox=QMessageBox()
+		msgBox.setWindowTitle("Help")
+		msgBox.setText("<Keyboard>\n"
+			"W:\tEnlarge image\nQ:\tShrink image\n"
+			"F:\tIncrease brush size\nD:\tDecrease brush size\n"
+			"U:\tUndo\n\n<Mouse>\n"
+			"Left Click:\tSelect/Mask regions\n"
+			"Right Click:\tSet as center")
+		msgBox.exec_()
 
 
 def main():        
